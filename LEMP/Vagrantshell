@@ -49,6 +49,7 @@ sed -i '/^short_open_tag/c short_open_tag = On' /etc/php5/fpm/php.ini
 sed -i '/^post_max_size/c post_max_size = 32M' /etc/php5/fpm/php.ini
 sed -i '/^upload_max_filesize/c upload_max_filesize = 32M' /etc/php5/fpm/php.ini
 #sed -i '/^;date.timezone/c date.timezone = America/Sao_Paulo' /etc/php5/fpm/php.ini
+sed -i '/^;listen.mode/c listen.mode = 0666' /etc/php5/fpm/pool.d/www.conf
 
 echo 'Setting up Nginx'
 # http://docs.vagrantup.com/v2/synced-folders/virtualbox.html

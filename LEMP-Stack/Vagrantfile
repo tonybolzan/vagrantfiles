@@ -1,0 +1,55 @@
+# Clean Vagrant Machine to LEMP Stack in Debian 7 (wheezy) with PHP5.5, Nginx, MySQL
+# 
+# Author: Tonin R. Bolzan <tonin@bolzan.io>
+# Available at: https://github.com/tonybolzan/vagrantfiles
+# 
+# Dependencies
+#   Virtualbox 4.3.10
+#   Virtualbox Extension Pack
+#   Vagrant >= 1.5.0
+
+# Your project must have a "public_html" directory under the folder specified here.
+# 
+# Make your settings in this machine hosts
+# sudo echo "192.168.50.2 example.dev" >> /etc/hosts
+
+# Change this to your requirements.
+hostname = "example.dev"
+address  = "192.168.50.2"
+folder   = "./"
+
+remote   = true
+
+# Do not change from here.
+Vagrant.require_version ">= 1.5.0"
+
+Vagrant.configure("2") do |config|
+
+  # If 64 Bits Architecture
+  if ['arch'].pack('p').size == 8
+    config.vm.box = "vogtmann/debian-7.5-64"    
+  else
+    config.vm.box = "vogtmann/debian-7.5-32"
+  end
+  
+  config.vm.hostname = hostname
+
+  config.vm.network "private_network", ip: address
+
+  # Forward MySQL
+  config.vm.network "forwarded_port", guest: 3306, host: 3306
+
+  config.vm.synced_folder folder, "/var/www", owner: "www-data", group: "www-data"
+
+  config.vm.provider :virtualbox do |virtualbox|
+    virtualbox.name = hostname
+    virtualbox.customize ["modifyvm", :id, "--memory", 512, "--natdnshostresolver1", "on"]
+  end
+
+  if remote
+    config.vm.provision :shell, :path => "https://raw.githubusercontent.com/tonybolzan/vagrantfiles/master/LEMP-Stack/Vagrantshell"
+  else
+    config.vm.provision :shell, :path => "Vagrantshell"
+  end
+
+end

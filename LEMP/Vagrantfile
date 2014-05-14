@@ -13,12 +13,12 @@
 # Make your settings in this machine hosts
 # sudo echo "192.168.50.2 example.dev" >> /etc/hosts
 
-# Change this to your requirements.
-hostname = "example.dev"
-address  = "192.168.50.2"
-folder   = "./"
-
-remote   = true
+# Change this for your requirements.
+hostname = "example.dev"	# Internal hostname for machine and name of the machine in Virtualbox
+address  = "192.168.50.2"	# Private IP address of the machine
+folder   = "./"				# The shared folder is the same as the current folder Vagrantfile
+remote   = true				# The install script should be obtained from github or locally in Vagrantshell
+forward  = false			# Forward ports from guest to host
 
 # Do not change from here.
 Vagrant.require_version ">= 1.5.0"
@@ -36,8 +36,11 @@ Vagrant.configure("2") do |config|
 
   config.vm.network "private_network", ip: address
 
-  # Forward MySQL
-  config.vm.network "forwarded_port", guest: 3306, host: 3306
+  # Forward Ports
+  if forward
+    config.vm.network "forwarded_port", guest: 3306, host: 3306
+    config.vm.network "forwarded_port", guest: 80,   host: 8080
+  end
 
   config.vm.synced_folder folder, "/var/www", owner: "www-data", group: "www-data"
 
@@ -47,7 +50,7 @@ Vagrant.configure("2") do |config|
   end
 
   if remote
-    config.vm.provision :shell, :path => "https://raw.githubusercontent.com/tonybolzan/vagrantfiles/master/LEMP-Stack/Vagrantshell"
+    config.vm.provision :shell, :path => "https://raw.github.com/tonybolzan/vagrantfiles/master/LEMP/Vagrantshell"
   else
     config.vm.provision :shell, :path => "Vagrantshell"
   end

@@ -34,12 +34,14 @@ mkdir -p /var/log/xdebug
 chmod 777 /var/log/xdebug
 cat >> /etc/php5/mods-available/xdebug.ini <<EOF
 xdebug.remote_enable=1
+xdebug.remote_connect_back = 1
 xdebug.remote_handler=dbgp
 xdebug.remote_mode=req
 xdebug.remote_port=9000
-xdebug.remote_connect_back = 1
-xdebug.profiler_enable_trigger=1
+xdebug.remote_host=10.0.2.2
+xdebug.remote_log=/var/log/xdebug/xdebug.log
 xdebug.profiler_output_dir=/var/log/xdebug
+xdebug.profiler_enable_trigger=1
 xdebug.max_nesting_level = 200
 EOF
 

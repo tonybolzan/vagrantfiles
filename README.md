@@ -19,12 +19,12 @@ vagrant up
 sudo echo "192.168.50.2 example.dev" >> /etc/hosts
 # Enjoy
 ```
-**OBS.:** Your project must have a `public_html` directory under the `folder` specified in Vagrantfile.
+**PS.:** Your project must have a `public_html` directory under the `folder` specified in Vagrantfile.
 
 ## Packages
 - Debian 7.5 Wheezy
 - Nginx 1.6
-- PHP 5.5 + FPM
+- PHP 5.5 + FPM + Xdebug
 - MySQL 5.6
 
 ## Settings
@@ -36,3 +36,6 @@ folder   = "./"				# The shared folder is the same as the current folder Vagrant
 remote   = true				# The install script should be obtained from github or locally in Vagrantshell
 forward  = false			# Forward ports from guest to host
 ```
+
+### PHP Xdebug
+Set your IDE key to `VAGRANT`.

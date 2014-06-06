@@ -1,4 +1,6 @@
-# Clean Vagrant Machine to LEMP Stack in Debian 7 (wheezy) with PHP5.5, Nginx, MySQL
+#!/bin/bash
+#
+# Clean Vagrant Machine to LEMP Stack in Debian 7 (wheezy) with PHP5.5, Nginx, MySQL, MongoDB
 # 
 # Author: Tonin R. Bolzan <tonin@bolzan.io>
 # Available at: https://github.com/tonybolzan/vagrantfiles
@@ -11,28 +13,32 @@
 # Do not change from here.
 
 echo 'Adding repository dotdeb.org'
-wget -qO - http://www.dotdeb.org/dotdeb.gpg | sudo apt-key add -
-cat > /etc/apt/sources.list.d/dotdeb.list <<EOF
+wget -qO - http://www.dotdeb.org/dotdeb.gpg | apt-key add -
+cat > /etc/apt/sources.list.d/dotdeb.list <<'EOF'
 deb http://packages.dotdeb.org wheezy all
 deb-src http://packages.dotdeb.org wheezy all
 deb http://packages.dotdeb.org wheezy-php55 all
 deb-src http://packages.dotdeb.org wheezy-php55 all
 EOF
 
+echo 'Adding repository to MongoDB'
+apt-key adv --keyserver keyserver.ubuntu.com --recv 7F0CEB10 &> /dev/null
+echo 'deb http://downloads-distro.mongodb.org/repo/debian-sysvinit dist 10gen' > /etc/apt/sources.list.d/mongodb.list
+
 echo 'Updating S/O'
-apt-get -qq update
-apt-get -yqq upgrade
+apt-get -qq update &> /dev/null
+apt-get -yqq upgrade &> /dev/null
 
 echo 'Installing Packages'
 debconf-set-selections <<< 'mysql-server mysql-server/root_password password root'
 debconf-set-selections <<< 'mysql-server mysql-server/root_password_again password root'
 
-apt-get -yqq install curl whois vim git htop nginx php5 php5-common php5-cli php5-cgi php5-fpm php5-apcu php5-curl php5-gd php5-imagick php5-mysql php5-sqlite php5-mcrypt php5-intl php5-readline php5-json php5-xmlrpc php5-xdebug php-pear mysql-server mysql-client sqlite3
+apt-get -yqq install curl whois vim git htop nginx php5 php5-common php5-cli php5-cgi php5-fpm php5-apcu php5-curl php5-gd php5-imagick php5-mongo php5-mysql php5-sqlite php5-mcrypt php5-intl php5-readline php5-json php5-xmlrpc php5-xdebug php5-xhprof php-pear mysql-server mysql-client sqlite3 mongodb-org &> /dev/null
 
 echo 'Setting up Xdebug'
 mkdir -p /var/log/xdebug
 chmod 777 /var/log/xdebug
-cat >> /etc/php5/mods-available/xdebug.ini <<EOF
+cat >> /etc/php5/mods-available/xdebug.ini <<'EOF'
 xdebug.remote_enable = on
 xdebug.remote_connect_back = on
 xdebug.remote_handler = dbgp
@@ -50,10 +56,53 @@ cp /usr/share/php5/php.ini-development /etc/php5/fpm/php.ini
 sed -i '/^short_open_tag/c short_open_tag = On' /etc/php5/{cgi,cli,fpm}/php.ini
 sed -i '/^post_max_size/c post_max_size = 32M' /etc/php5/{cgi,cli,fpm}/php.ini
 sed -i '/^upload_max_filesize/c upload_max_filesize = 32M' /etc/php5/{cgi,cli,fpm}/php.ini
-#sed -i '/^;date.timezone/c date.timezone = America/Sao_Paulo' /etc/php5/{cgi,cli,fpm}/php.ini
+sed -i '/^;date.timezone/c date.timezone = UTC' /etc/php5/{cgi,cli,fpm}/php.ini
 
 echo 'Setting up PHP-FPM'
 sed -i '/^;listen.mode/c listen.mode = 0666' /etc/php5/fpm/pool.d/www.conf
+
+echo 'Setting up PHP Composer'
+curl -sS https://getcomposer.org/installer | php -- --quiet --install-dir=/usr/local/bin --filename=composer > /dev/null
+
+echo 'Setting up PHP XHProf + XHGui'
+git clone --quiet https://github.com/perftools/xhgui.git /var/xhprof/gui
+chmod -R 0777 /var/xhprof/gui/cache
+composer --quiet --no-interaction --working-dir=/var/xhprof/gui/ update --prefer-dist
+cat > /var/xhprof/gui/config/config.php <<'EOF'
+<?php
+return array(
+    'debug' => false,
+    'mode' => 'development',
+    'save.handler' => 'mongodb',
+    'db.host' => 'mongodb://127.0.0.1:27017',
+    'db.db' => 'xhprof',
+    'db.options' => array(),
+    'templates.path' => dirname(__DIR__) . '/src/templates',
+    'date.format' => 'M jS H:i:s',
+    'detail.count' => 6,
+    'page.limit' => 25,
+    'profiler.enable' => function() {
+        if (strpos($_SERVER['REQUEST_URI'], '/xhprof') === 0) {
+            return false;
+        }
+        return true;
+    },
+    'profiler.simple_url' => function($url) {
+        return preg_replace('/\=\d+/', '', $url);
+    }
+);
+EOF
+
+# Optimize and set autoremove profiles after 5 days
+mongo > /dev/null <<'JS'
+use xhprof
+db.results.ensureIndex( { 'meta.SERVER.REQUEST_TIME' : -1 } )
+db.results.ensureIndex( { 'profile.main().wt' : -1 } )
+db.results.ensureIndex( { 'profile.main().mu' : -1 } )
+db.results.ensureIndex( { 'profile.main().cpu' : -1 } )
+db.results.ensureIndex( { 'meta.url' : 1 } )
+db.results.ensureIndex( { "meta.request_ts" : 1 }, { expireAfterSeconds : 432000 } )
+JS
 
 echo 'Setting up Nginx'
 # http://docs.vagrantup.com/v2/synced-folders/virtualbox.html
@@ -68,6 +117,22 @@ server {
 
     index index.html index.php;
 
+    location ~ ^/xhprof/(.+\.php)$ {
+        alias /var/xhprof/gui/webroot/$1;
+        fastcgi_pass unix:/var/run/php5-fpm.sock;
+        fastcgi_index index.php;
+        include fastcgi_params;
+    }
+
+    location ~ ^/xhprof/(.+\.(js|css|gif|png|svg|ttf|eot|woff))$ {
+        alias /var/xhprof/gui/webroot/$1;
+    }
+
+    location ~ ^/xhprof/(.*) {
+        alias /var/xhprof/gui/webroot/;
+        try_files $1 $1/ /xhprof/index.php?$1&$args;
+    }
+
     location / {
         try_files $uri $uri/ /index.php?$args;
     }
@@ -81,6 +146,7 @@ server {
         fastcgi_pass unix:/var/run/php5-fpm.sock;
         fastcgi_index index.php;
         include fastcgi_params;
+        fastcgi_param PHP_VALUE "auto_prepend_file=/var/xhprof/gui/external/header.php";
     }
 
     location ~ \.(js|css|png|jpg|jpeg|gif|swf|ico|pdf|mov|fla|zip|rar)$ {
@@ -102,12 +168,17 @@ EOF
 
 echo 'Setting up MySQL'
 sed -i '/^bind-address/c bind-address = 0.0.0.0' /etc/mysql/my.cnf
-mysql -uroot -proot -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY 'root' WITH GRANT OPTION;"
+mysql -uroot -proot -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY 'root' WITH GRANT OPTION;" &> /dev/null
 
-echo 'Restarting PHP, Nginx and MySQL'
-service php5-fpm restart
-service nginx restart
-service mysql restart
+echo 'Finalizing Settings'
+apt-get -qq clean
+echo '' > /etc/motd
+
+echo 'Restarting PHP, Nginx, MySQL and MongoDB'
+service php5-fpm restart > /dev/null
+service nginx restart > /dev/null
+service mysql restart > /dev/null
+service mongod restart > /dev/null
 
 echo -e '\n\nYou can access this server in:'
 for IP in $(hostname -I);do

@@ -1,4 +1,6 @@
-# Clean Vagrant Machine to LEMP Stack in Debian 7 (wheezy) with PHP5.5, Nginx, MySQL
+#!/usr/bin/env ruby
+#
+# Clean Vagrant Machine to LEMP Stack in Debian 7 (wheezy) with PHP5.5, Nginx, MySQL, MongoDB
 # 
 # Author: Tonin R. Bolzan <tonin@bolzan.io>
 # Available at: https://github.com/tonybolzan/vagrantfiles
@@ -17,7 +19,6 @@
 hostname = "example.dev"	# Internal hostname for machine and name of the machine in Virtualbox
 address  = "192.168.50.2"	# Private IP address of the machine
 folder   = "./"				# The shared folder is the same as the current folder Vagrantfile
-remote   = true				# The install script should be obtained from github or locally in Vagrantshell
 forward  = false			# Forward ports from guest to host
 
 # Do not change from here.
@@ -27,7 +28,7 @@ Vagrant.configure("2") do |config|
 
   # If 64 Bits Architecture
   if ['arch'].pack('p').size == 8
-    config.vm.box = "vogtmann/debian-7.5-64"    
+    config.vm.box = "vogtmann/debian-7.5-64"
   else
     config.vm.box = "vogtmann/debian-7.5-32"
   end
@@ -38,6 +39,7 @@ Vagrant.configure("2") do |config|
 
   # Forward Ports
   if forward
+    config.vm.network "forwarded_port", guest: 27017, host: 27017
     config.vm.network "forwarded_port", guest: 3306, host: 3306
     config.vm.network "forwarded_port", guest: 80,   host: 8080
   end
@@ -49,10 +51,10 @@ Vagrant.configure("2") do |config|
     virtualbox.customize ["modifyvm", :id, "--memory", 512, "--natdnshostresolver1", "on"]
   end
 
-  if remote
-    config.vm.provision :shell, :path => "https://raw.github.com/tonybolzan/vagrantfiles/master/LEMP/Vagrantshell"
-  else
+  if File.file?("Vagrantshell")
     config.vm.provision :shell, :path => "Vagrantshell"
+  else
+    config.vm.provision :shell, :path => "https://raw.github.com/tonybolzan/vagrantfiles/master/LEMP/Vagrantshell"
   end
 
 end

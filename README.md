@@ -17,7 +17,7 @@
 # Go to Your Project
 cd your/project/
 # Get Vagrantfile
-curl -sS 'https://raw.github.com/tonybolzan/vagrantfiles/master/LEMP-Stack/Vagrantfile' > Vagrantfile
+curl -sS 'https://raw.githubusercontent.com/tonybolzan/vagrantfiles/master/LEMP/Vagrantfile' > Vagrantfile
 # Edit Vagrantfile Settings (Description Below)
 vim Vagrantfile
 # Start Machine

@@ -38,7 +38,11 @@ apt-get -yqq install curl whois vim git htop nginx php5 php5-common php5-cli php
 echo 'Setting up Xdebug'
 mkdir -p /var/log/xdebug
 chmod 777 /var/log/xdebug
-cat >> /etc/php5/mods-available/xdebug.ini <<'EOF'
+XdebugFile=`find /usr/lib/php5/ -name 'xdebug.so'|head -1`
+cat > /etc/php5/mods-available/xdebug.ini <<EOF
+; configuration for php xdebug module
+; priority=20
+zend_extension=$XdebugFile
 xdebug.remote_enable = on
 xdebug.remote_connect_back = on
 xdebug.remote_handler = dbgp
@@ -65,7 +69,8 @@ echo 'Setting up PHP Composer'
 curl -sS https://getcomposer.org/installer | php -- --quiet --install-dir=/usr/local/bin --filename=composer > /dev/null
 
 echo 'Setting up PHP XHProf + XHGui'
-git clone --quiet https://github.com/perftools/xhgui.git /var/xhprof/gui
+[ -d /var/xhprof/gui ] && rm -rf /var/xhprof/gui
+git clone --quiet --recursive https://github.com/perftools/xhgui.git /var/xhprof/gui
 chmod -R 0777 /var/xhprof/gui/cache
 composer --quiet --no-interaction --working-dir=/var/xhprof/gui/ update --prefer-dist
 cat > /var/xhprof/gui/config/config.php <<'EOF'
@@ -111,9 +116,7 @@ sed -i 's/\(.*sendfile\).*;$/\1 off;/g' /etc/nginx/nginx.conf
 # Like Openshift root folders
 DocumentRoot=""
 for F in www web public_html public php; do
-    if [ -d $F ]; then
-        DocumentRoot="$F/";
-    fi
+    [ -d /var/www/$F ] && DocumentRoot="$F/"
 done
 
 cat > /etc/nginx/sites-available/default <<EOF
@@ -198,3 +201,7 @@ echo -e '\n\nYou can access this server in:'
 for IP in $(hostname -I);do
     echo "http://$IP/";
 done
+Hostname=`hostname -f`
+echo 'Or execute'
+echo "sudo echo '$IP $Hostname' >> /etc/hosts"
+echo "And access in http://$Hostname/"

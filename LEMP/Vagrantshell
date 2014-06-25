@@ -108,13 +108,24 @@ echo 'Setting up Nginx'
 # http://docs.vagrantup.com/v2/synced-folders/virtualbox.html
 sed -i 's/\(.*sendfile\).*;$/\1 off;/g' /etc/nginx/nginx.conf
 
-cat > /etc/nginx/sites-available/default <<'EOF'
+# Like Openshift root folders
+DocumentRoot=""
+for F in www web public_html public php; do
+    if [ -d $F ]; then
+        DocumentRoot="$F/";
+    fi
+done
+
+cat > /etc/nginx/sites-available/default <<EOF
 server {
     listen 80 default_server;
     listen [::]:80 default_server ipv6only=on;
 
-    root /var/www/public_html/;
+    root /var/www/$DocumentRoot;
 
+EOF
+
+cat >> /etc/nginx/sites-available/default <<'EOF'
     index index.html index.php;
 
     location ~ ^/xhprof/(.+\.php)$ {

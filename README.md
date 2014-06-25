@@ -26,10 +26,8 @@ vagrant up
 sudo echo "192.168.50.2 example.dev" >> /etc/hosts
 # Enjoy
 ```
-**PS.:** Your project must have a `public_html` directory under the `folder` specified in Vagrantfile.
-If you want to modify this behavior, please download the `Vagrantshell`, modify the configuration of Nginx in the parameter `root`.
-If a "Vagrantshell" exists in the same path that "Vagrantfile" it will be used, otherwise it will be downloaded from github.
-
+**PS.:** If your project have a directory `php` or `public` or `public_html` or `web` or `www` inside of a directory specified in variable `folder` in `Vagrantfile`, it will be used as Document Root of the NGINX.
+Otherwise the variable `folder` will be assumed.
 
 ## Settings
 You can modify Vagrantfile for your requirements, The default settings are:
@@ -46,3 +44,7 @@ Set your IDE key to `VAGRANT`.
 ### PHP XHProf
 To access xhprof go to:
 `http://example.dev/xhprof/`
+
+## Changelog
+### 2014/06/02
+- Autodetect NGINX Document Root in `$folder/php/`, `$folder/public/`, `$folder/public_html/`, `$folder/web/`, `$folder/www/`, `$folder/`

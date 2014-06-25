@@ -26,7 +26,7 @@ vagrant up
 sudo echo "192.168.50.2 example.dev" >> /etc/hosts
 # Enjoy
 ```
-**PS.:** If your project have a directory `php` or `public` or `public_html` or `web` or `www` inside of a directory specified in variable `folder` in `Vagrantfile`, it will be used as Document Root of the NGINX.
+**PS.:** If your project have a directory `php`, `public`, `public_html`, `web` or `www` inside of a directory specified in variable `folder` in `Vagrantfile`, it will be used as Document Root of the NGINX.
 Otherwise the variable `folder` will be assumed.
 
 ## Settings

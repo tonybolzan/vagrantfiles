@@ -26,7 +26,7 @@ vagrant up
 sudo echo "192.168.50.2 example.dev" >> /etc/hosts
 # Enjoy
 ```
-**PS.:** If your project have a directory `php`, `public`, `public_html`, `web` or `www` inside of a directory specified in variable `folder` in `Vagrantfile`, it will be used as Document Root of the NGINX.
+**PS.:** If your project have a directory `php`, `public`, `public_html`, `web` or `www` inside of a directory specified in variable `folder` in `Vagrantfile`, it will be used as Document Root of the Web Server.
 Otherwise the variable `folder` will be assumed.
 
 ## Settings
@@ -48,3 +48,16 @@ To access xhprof go to:
 ## Changelog
 ### 2014/06/02
 - Autodetect NGINX Document Root in `$folder/php/`, `$folder/public/`, `$folder/public_html/`, `$folder/web/`, `$folder/www/`, `$folder/`
+
+
+# LAMP Stack
+
+## Packages
+- Debian 7.5 Wheezy
+- Apache HTTPD
+- PHP 5.5 + Xdebug + XHProf
+- MySQL 5.6
+- MongoDB 2.6
+
+## Usage
+Same as LEMP Stack, but change `LEMP` to `LAMP`

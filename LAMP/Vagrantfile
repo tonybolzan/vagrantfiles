@@ -1,0 +1,65 @@
+#!/usr/bin/env ruby
+#
+# Clean Vagrant Machine to LAMP Stack in Debian 7 (wheezy) with PHP5.5, Apache, MySQL, MongoDB
+# 
+# Author: Tonin R. Bolzan <tonin@bolzan.io>
+# Available at: https://github.com/tonybolzan/vagrantfiles
+# 
+# Dependencies
+#   Virtualbox 4.3.10
+#   Virtualbox Extension Pack
+#   Vagrant >= 1.5.0
+#
+# PS.: If your project have a directory php, public, public_html, web or www
+# inside of a directory specified in variable folder in Vagrantfile,
+# it will be used as Document Root of the Web Server.
+# Otherwise the variable folder will be assumed.
+# 
+# Make your settings in this machine hosts
+# sudo echo "192.168.50.2 example.dev" >> /etc/hosts
+
+# Change this for your requirements.
+hostname = "example.dev"  # Internal hostname for machine and name of the machine in Virtualbox
+address  = "192.168.50.2" # Private IP address of the machine
+folder   = "./"           # The shared folder is the same as the current folder Vagrantfile
+forward  = false          # Forward ports from guest to host
+
+# Do not change from here.
+Vagrant.require_version ">= 1.5.0"
+
+Vagrant.configure("2") do |config|
+
+  # If 64 Bits Architecture
+  if ['arch'].pack('p').size == 8
+    config.vm.box = "vogtmann/debian-7.5-64"
+  else
+    config.vm.box = "vogtmann/debian-7.5-32"
+  end
+  
+  config.vm.hostname = hostname
+
+  config.vm.network "private_network", ip: address
+
+  # Forward Ports
+  if forward
+    config.vm.network "forwarded_port", guest: 27017, host: 27017
+    config.vm.network "forwarded_port", guest: 3306, host: 3306
+    config.vm.network "forwarded_port", guest: 80,   host: 8080
+  end
+
+  config.vm.synced_folder folder, "/var/www", owner: "www-data", group: "www-data"
+
+  config.vm.provider :virtualbox do |virtualbox|
+    virtualbox.name = hostname
+    virtualbox.customize ["modifyvm", :id, "--memory", 512, "--natdnshostresolver1", "on"]
+  end
+
+  config.ssh.shell = "bash -c 'BASH_ENV=/etc/profile exec bash'"
+
+  if File.file?("Vagrantshell")
+    config.vm.provision :shell, :path => "Vagrantshell"
+  else
+    config.vm.provision :shell, :path => "https://raw.github.com/tonybolzan/vagrantfiles/master/LAMP/Vagrantshell"
+  end
+
+end

@@ -1,0 +1,177 @@
+#!/bin/bash
+#
+# Clean Vagrant Machine to LAMP Stack in Debian 7 (wheezy) with PHP5.5, Apache, MySQL, MongoDB
+# 
+# Author: Tonin R. Bolzan <tonin@bolzan.io>
+# Available at: https://github.com/tonybolzan/vagrantfiles
+# 
+# Dependencies
+#   Virtualbox 4.3.10
+#   Virtualbox Extension Pack
+#   Vagrant >= 1.5.0
+
+# Do not change from here.
+
+echo 'Adding repository dotdeb.org'
+wget -qO - http://www.dotdeb.org/dotdeb.gpg | apt-key add -
+cat > /etc/apt/sources.list.d/dotdeb.list <<'EOF'
+deb http://packages.dotdeb.org wheezy all
+deb-src http://packages.dotdeb.org wheezy all
+deb http://packages.dotdeb.org wheezy-php55 all
+deb-src http://packages.dotdeb.org wheezy-php55 all
+EOF
+
+echo 'Adding repository to MongoDB'
+apt-key adv --keyserver keyserver.ubuntu.com --recv 7F0CEB10 &> /dev/null
+echo 'deb http://downloads-distro.mongodb.org/repo/debian-sysvinit dist 10gen' > /etc/apt/sources.list.d/mongodb.list
+
+echo 'Updating S/O'
+apt-get -qq update &> /dev/null
+apt-get -yqq upgrade &> /dev/null
+
+echo 'Installing Packages'
+debconf-set-selections <<< 'mysql-server mysql-server/root_password password root'
+debconf-set-selections <<< 'mysql-server mysql-server/root_password_again password root'
+
+apt-get -yqq install curl whois vim git htop apache2 libapache2-mod-php5 php5 php5-common php5-cli php5-cgi php5-apcu php5-curl php5-gd php5-imagick php5-mongo php5-mysql php5-sqlite php5-mcrypt php5-intl php5-readline php5-json php5-xmlrpc php5-xdebug php5-xhprof php-pear mysql-server mysql-client sqlite3 mongodb-org &> /dev/null
+
+echo 'Setting up Xdebug'
+mkdir -p /var/log/xdebug
+chmod 777 /var/log/xdebug
+XdebugFile=`find /usr/lib/php5/ -name 'xdebug.so'|head -1`
+cat > /etc/php5/mods-available/xdebug.ini <<EOF
+; configuration for php xdebug module
+; priority=20
+zend_extension=$XdebugFile
+xdebug.remote_enable = on
+xdebug.remote_connect_back = on
+xdebug.remote_handler = dbgp
+xdebug.remote_mode = req
+xdebug.remote_port = 9000
+xdebug.remote_log = /var/log/xdebug/xdebug.log
+xdebug.profiler_output_dir = /var/log/xdebug
+xdebug.profiler_enable_trigger = on
+xdebug.max_nesting_level = 200
+xdebug.idekey = VAGRANT
+EOF
+
+echo 'Setting up PHP'
+cp /usr/share/php5/php.ini-development /etc/php5/apache2/php.ini
+sed -i '/^short_open_tag/c short_open_tag = On' /etc/php5/{cgi,cli,apache2}/php.ini
+sed -i '/^post_max_size/c post_max_size = 32M' /etc/php5/{cgi,cli,apache2}/php.ini
+sed -i '/^upload_max_filesize/c upload_max_filesize = 32M' /etc/php5/{cgi,cli,apache2}/php.ini
+sed -i '/^;date.timezone/c date.timezone = UTC' /etc/php5/{cgi,cli,apache2}/php.ini
+
+echo 'Setting up PHP Composer'
+curl -sS https://getcomposer.org/installer | php -- --quiet --install-dir=/usr/local/bin --filename=composer > /dev/null
+
+echo 'Setting up PHP XHProf + XHGui'
+[ -d /var/xhprof ] && rm -rf /var/xhprof
+git clone --quiet --recursive https://github.com/perftools/xhgui.git /var/xhprof
+chown www-data:www-data -R /var/xhprof
+chmod -R 0777 /var/xhprof/
+composer --quiet --no-interaction --working-dir=/var/xhprof/ update --prefer-dist
+
+cat > /var/xhprof/webroot/.htaccess <<'EOF'
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /xhprof/
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
+EOF
+
+cat > /var/xhprof/config/config.php <<'EOF'
+<?php
+return array(
+    'debug' => false,
+    'mode' => 'development',
+    'save.handler' => 'mongodb',
+    'db.host' => 'mongodb://127.0.0.1:27017',
+    'db.db' => 'xhprof',
+    'db.options' => array(),
+    'templates.path' => dirname(__DIR__) . '/src/templates',
+    'date.format' => 'M jS H:i:s',
+    'detail.count' => 6,
+    'page.limit' => 25,
+    'profiler.enable' => function() {
+        if (strpos($_SERVER['REQUEST_URI'], '/xhprof') === 0) {
+            return false;
+        }
+        return true;
+    },
+    'profiler.simple_url' => function($url) {
+        return preg_replace('/\=\d+/', '', $url);
+    }
+);
+EOF
+
+# Optimize and set autoremove profiles after 5 days
+mongo > /dev/null <<'JS'
+use xhprof
+db.results.ensureIndex( { 'meta.SERVER.REQUEST_TIME' : -1 } )
+db.results.ensureIndex( { 'profile.main().wt' : -1 } )
+db.results.ensureIndex( { 'profile.main().mu' : -1 } )
+db.results.ensureIndex( { 'profile.main().cpu' : -1 } )
+db.results.ensureIndex( { 'meta.url' : 1 } )
+db.results.ensureIndex( { "meta.request_ts" : 1 }, { expireAfterSeconds : 432000 } )
+JS
+
+echo 'Setting up Apache'
+a2enmod headers rewrite expires php5 > /dev/null
+
+# Like Openshift root folders
+DocumentRoot=""
+for F in www web public_html public php; do
+    [ -d /var/www/$F ] && DocumentRoot="/$F"
+done
+
+cat > /etc/apache2/conf.d/xhprof.conf <<'EOF'
+Alias /xhprof "/var/xhprof/webroot/"
+EOF
+
+cat > /etc/apache2/sites-enabled/000-default <<EOF
+<VirtualHost *:80>
+    ServerAdmin webmaster@localhost
+
+    DocumentRoot /var/www$DocumentRoot
+
+    php_admin_value auto_prepend_file "/var/xhprof/external/header.php"
+
+    <Directory />
+        Options Indexes FollowSymLinks MultiViews
+        AllowOverride All
+        Order allow,deny
+        allow from all
+    </Directory>
+EOF
+
+cat >> /etc/apache2/sites-enabled/000-default <<'EOF'
+
+    LogLevel warn
+    ErrorLog ${APACHE_LOG_DIR}/error.log
+    CustomLog ${APACHE_LOG_DIR}/access.log combined
+</VirtualHost>
+EOF
+
+echo 'Setting up MySQL'
+sed -i '/^bind-address/c bind-address = 0.0.0.0' /etc/mysql/my.cnf
+mysql -uroot -proot -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY 'root' WITH GRANT OPTION;" &> /dev/null
+
+echo 'Finalizing Settings'
+apt-get -qq clean
+echo '' > /etc/motd
+
+echo 'Restarting PHP, Apache, MySQL and MongoDB'
+service apache2 restart > /dev/null
+service mysql restart > /dev/null
+service mongod restart > /dev/null
+
+echo -e '\n\nYou can access this server in:'
+for IP in $(hostname -I);do
+    echo "http://$IP/";
+done
+Hostname=`hostname -f`
+echo 'Or execute'
+echo "sudo echo '$IP $Hostname' >> /etc/hosts"
+echo "And access in http://$Hostname/"

@@ -33,7 +33,7 @@ echo 'Installing Packages'
 debconf-set-selections <<< 'mysql-server mysql-server/root_password password root'
 debconf-set-selections <<< 'mysql-server mysql-server/root_password_again password root'
 
-apt-get -yqq install curl whois vim git htop nginx php5 php5-common php5-cli php5-cgi php5-fpm php5-apcu php5-curl php5-gd php5-imagick php5-mongo php5-mysql php5-sqlite php5-mcrypt php5-intl php5-readline php5-json php5-xmlrpc php5-xdebug php5-xhprof php-pear mysql-server mysql-client sqlite3 mongodb-org &> /dev/null
+apt-get -yqq install curl whois vim git htop nginx php5 php5-common php5-cli php5-cgi php5-fpm php5-apcu php5-curl php5-gd php5-imagick php5-mongo php5-mysql php5-sqlite php5-mcrypt php5-intl php5-readline php5-json php5-xmlrpc php5-xdebug php5-xhprof php-pear mysql-server mysql-client sqlite3 mongodb-org avahi-daemon avahi-discover libnss-mdns &> /dev/null
 
 echo 'Setting up Xdebug'
 mkdir -p /var/log/xdebug
@@ -201,7 +201,9 @@ echo -e '\n\nYou can access this server in:'
 for IP in $(hostname -I);do
     echo "http://$IP/";
 done
-Hostname=`hostname -f`
-echo 'Or execute'
-echo "sudo echo '$IP $Hostname' >> /etc/hosts"
-echo "And access in http://$Hostname/"
+echo 'If you have mDNS, access using:'
+echo "http://`hostname`.local/"
+echo
+echo "If you don't have mDNS, execute:"
+echo "sudo echo '$IP `hostname -f`' >> /etc/hosts"
+echo "And access in http://`hostname -f`/"

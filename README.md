@@ -22,8 +22,10 @@ curl -sS 'https://raw.githubusercontent.com/tonybolzan/vagrantfiles/master/LEMP/
 vim Vagrantfile
 # Start Machine
 vagrant up
-# Add entry to your hosts
-sudo echo "192.168.50.2 example.dev" >> /etc/hosts
+# If you have mDNS (default on Mac OS X and Ubuntu), access in:
+# http://example.local/
+# Or, add entry to your hosts
+sudo echo "192.168.50.2 example.local" >> /etc/hosts
 # Enjoy
 ```
 **PS.:** If your project have a directory `php`, `public`, `public_html`, `web` or `www` inside of a directory specified in variable `folder` in `Vagrantfile`, it will be used as Document Root of the Web Server.
@@ -32,7 +34,7 @@ Otherwise the variable `folder` will be assumed.
 ## Settings
 You can modify Vagrantfile for your requirements, The default settings are:
 ```ruby
-hostname = "example.dev"	# Internal hostname for machine and name of the machine in Virtualbox
+hostname = "example.local"	# Internal hostname for machine and name of the machine in Virtualbox
 address  = "192.168.50.2"	# Private IP address of the machine
 folder   = "./"				# The shared folder is the same as the current folder Vagrantfile
 forward  = false			# Forward ports from guest to host
@@ -43,9 +45,11 @@ Set your IDE key to `VAGRANT`.
 
 ### PHP XHProf
 To access xhprof go to:
-`http://example.dev/xhprof/`
+`http://example.local/xhprof/`
 
 ## Changelog
+### 2014/09/17
+- Support mDNS and changed domain `.dev` to `.local`
 ### 2014/06/02
 - Autodetect NGINX Document Root in `$folder/php/`, `$folder/public/`, `$folder/public_html/`, `$folder/web/`, `$folder/www/`, `$folder/`
 

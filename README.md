@@ -50,6 +50,7 @@ To access xhprof go to:
 ## Changelog
 ### 2014/09/17
 - Support mDNS and changed domain `.dev` to `.local`
+
 ### 2014/06/02
 - Autodetect NGINX Document Root in `$folder/php/`, `$folder/public/`, `$folder/public_html/`, `$folder/web/`, `$folder/www/`, `$folder/`
 

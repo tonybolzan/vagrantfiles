@@ -16,13 +16,13 @@
 # Otherwise the variable folder will be assumed.
 # 
 # Make your settings in this machine hosts
-# sudo echo "192.168.50.2 example.dev" >> /etc/hosts
+# sudo echo "192.168.50.2 example.local" >> /etc/hosts
 
 # Change this for your requirements.
-hostname = "example.dev"  # Internal hostname for machine and name of the machine in Virtualbox
-address  = "192.168.50.2" # Private IP address of the machine
-folder   = "./"           # The shared folder is the same as the current folder Vagrantfile
-forward  = false          # Forward ports from guest to host
+hostname = "example.local" # Internal hostname for machine and name of the machine in Virtualbox
+address  = "192.168.50.2"  # Private IP address of the machine
+folder   = "./"            # The shared folder is the same as the current folder Vagrantfile
+forward  = false           # Forward ports from guest to host
 
 # Do not change from here.
 Vagrant.require_version ">= 1.5.0"
